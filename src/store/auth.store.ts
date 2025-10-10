@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { loginUser, type User } from "../services/AuthService";
 
-type Sesion = { nombre: string; codigo: string; token: string; rol?: User["rol"] };
+type Sesion = { nombre: string; codigo: string; token: string; rol?: User["rol"]; tiendaId?: number };
 
 export const useAuth = create<{
   sesion?: Sesion;
@@ -21,7 +21,10 @@ export const useAuth = create<{
   login: async (codigo, pass) => {
     const user = await loginUser(codigo, pass);
     if (!user) { set({ error: "Credenciales inválidas" }); throw new Error("INVALID"); }
-    const s: Sesion = { codigo: user.codigo, nombre: user.nombre, rol: user.rol, token: crypto.randomUUID() };
+    const s: Sesion = {
+      codigo: user.codigo, nombre: user.nombre, rol: user.rol, tiendaId: user.tiendaId,
+      token: crypto.randomUUID()
+    };
     localStorage.setItem("sesion", JSON.stringify(s));
     set({ sesion: s, error: undefined });
   },

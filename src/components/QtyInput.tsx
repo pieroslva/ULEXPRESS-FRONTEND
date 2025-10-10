@@ -1,45 +1,14 @@
 // src/components/QtyInput.tsx
-import { useId } from "react";
-
-type Props = {
-  value: number;
-  onChange: (n: number) => void;
-  min?: number;
-  max?: number;
-};
-
-export default function QtyInput({ value, onChange, min = 1, max = 99 }: Props) {
-  const id = useId();
-  const clamp = (n: number) => Math.max(min, Math.min(max, n));
-
+type Props = { value:number; onChange:(n:number)=>void; min?:number; max?:number; };
+export default function QtyInput({ value, onChange, min=1, max=99 }: Props){
+  const clamp = (n:number)=> Math.max(min, Math.min(max, n));
   return (
     <div className="inline-flex items-center border border-white/20 rounded-lg overflow-hidden">
-      <button
-        type="button"
-        aria-label="disminuir"
-        className="px-3 py-1 bg-white/10 hover:bg-white/20"
-        onClick={() => onChange(clamp(value - 1))}
-      >
-        −
-      </button>
-      <input
-        id={id}
-        inputMode="numeric"
-        className="w-12 text-center bg-transparent py-1"
-        value={value}
-        onChange={(e) => {
-          const n = parseInt(e.target.value || "0", 10);
-          onChange(Number.isNaN(n) ? min : clamp(n));
-        }}
-      />
-      <button
-        type="button"
-        aria-label="aumentar"
-        className="px-3 py-1 bg-white/10 hover:bg-white/20"
-        onClick={() => onChange(clamp(value + 1))}
-      >
-        +
-      </button>
+      <button type="button" className="px-3 py-1 bg-white/10 hover:bg-white/20" onClick={()=>onChange(clamp(value-1))}>−</button>
+      <input className="w-12 text-center bg-transparent py-1"
+             value={value}
+             onChange={(e)=>onChange(clamp(parseInt(e.target.value||"0",10)||min))}/>
+      <button type="button" className="px-3 py-1 bg-white/10 hover:bg-white/20" onClick={()=>onChange(clamp(value+1))}>+</button>
     </div>
   );
 }

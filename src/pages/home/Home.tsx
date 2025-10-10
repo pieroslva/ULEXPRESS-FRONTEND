@@ -11,6 +11,7 @@ export default function Home(){
 
   return (
     <div className="space-y-4">
+      {/* 👇 Nombre del usuario logueado */}
       <p className="text-lg">Bienvenido, <b>{sesion?.nombre}</b></p>
       <div className="relative rounded-xl overflow-hidden">
         <img src="/img/brand/banner.jpg" className="h-56 md:h-72 w-full object-cover scale-[1.017]" />

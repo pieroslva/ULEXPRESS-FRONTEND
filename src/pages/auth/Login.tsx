@@ -1,3 +1,4 @@
+// src/pages/auth/Login.tsx
 import { useAuth } from "../../store/auth.store";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -13,28 +14,30 @@ export default function Login() {
     const f = e.target as HTMLFormElement;
     const codigo = (f.elements.namedItem("codigo") as HTMLInputElement).value;
     const pass = (f.elements.namedItem("pass") as HTMLInputElement).value;
+
     try {
       await login(codigo, pass);
-      navigate("/");
+
+      // 👉 justo después de loguear: revisar carrito previo
+      let items: unknown = [];
+      try { items = JSON.parse(localStorage.getItem("carrito") || "[]"); } catch {}
+      if (Array.isArray(items) && items.length > 0) {
+        const ir = window.confirm(`Tienes ${items.length} producto(s) en tu carrito de la sesión anterior. ¿Quieres revisarlos ahora?`);
+        navigate(ir ? "/carrito" : "/");
+      } else {
+        navigate("/");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    // min-h-screen para ocupar todo el alto del viewport
-    // grid md:grid-cols-2 y place-items-center centra vertical y horizontal
     <div className="min-h-screen grid md:grid-cols-2 place-items-center bg-zinc-900 text-white">
-      {/* Columna izquierda: imagen a full height */}
       <div className="w-full h-full hidden md:block">
-        <img
-          src="/img/brand/banner.jpg"
-          className="w-full h-full object-cover"
-          alt="Campus ULima"
-        />
+        <img src="/img/brand/banner.jpg" className="w-full h-full object-cover" alt="Campus ULima" />
       </div>
 
-      {/* Columna derecha: formulario centrado */}
       <form onSubmit={onSubmit} className="w-full max-w-2xl p-8">
         <div className="flex items-center gap-3 mb-4">
           <img src="/img/brand/logo.png" alt="ULExpress" className="h-8" />
@@ -50,7 +53,7 @@ export default function Login() {
         </button>
 
         <p className="text-xs opacity-70 mt-3">
-          Código: <b>Usuario</b> – Contraseña: <b>****</b>
+          Alumno: <b>20194613</b> / <b>1234</b> · Tienda: <b>TDUNKIN</b> / <b>dunkin</b>
         </p>
       </form>
     </div>

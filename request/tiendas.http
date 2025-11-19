@@ -1,0 +1,26 @@
+### Obtener todas las tiendas
+GET http://localhost:3000/tiendas
+
+### Obtener tienda por ID
+GET http://localhost:3000/tiendas/1
+
+### Crear tienda
+GET http://localhost:3000/api/tiendas/1
+
+Content-Type: application/json
+
+{
+  "nombre": "Tienda Nueva",
+  "direccion": "Av. Lima 123"
+}
+
+### Actualizar tienda
+PUT http://localhost:3000/tiendas/1
+Content-Type: application/json
+
+{
+  "nombre": "Tienda Actualizada"
+}
+
+### Eliminar tienda
+DELETE http://localhost:3000/tiendas/1

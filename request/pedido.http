@@ -1,0 +1,29 @@
+### Obtener todos los pedidos
+GET http://localhost:3000/pedidos
+
+### Obtener pedido por ID
+GET http://localhost:3000/pedidos/1
+
+### Crear un pedido
+POST http://localhost:3000/pedidos
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "tiendaId": 2,
+  "items": [
+    { "productoId": 1, "cantidad": 2 },
+    { "productoId": 3, "cantidad": 1 }
+  ]
+}
+
+### Actualizar estado del pedido
+PUT http://localhost:3000/pedidos/1
+Content-Type: application/json
+
+{
+  "estado": "ENTREGADO"
+}
+
+### Eliminar pedido
+DELETE http://localhost:3000/pedidos/1

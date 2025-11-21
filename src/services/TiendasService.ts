@@ -1,9 +1,11 @@
+import { api } from "../config/api";
+
 export type Producto = {
-  idProducto: number;
+  idProducto: number; // En DB es 'id' pero el front usa 'idProducto', mapeamos abajo
   nombre: string;
   precio: number;
   imagen: string;
-  stock?: boolean; // ← nuevo
+  stock?: boolean;
 };
 
 export type Tienda = {
@@ -14,95 +16,64 @@ export type Tienda = {
   catalogo: Producto[];
 };
 
-// ====== Seed (si no hay nada en localStorage) ======
-const seed: Tienda[] = [
-  {
-    idTienda: 1,
-    nombre: "DUNKIN DONUTS",
-    ubicacion: "ULima - Edificio D",
-    logo: "/img/tiendas/dunkin.jpg",
-    catalogo: [
-      { idProducto: 101, nombre: "Café Pequeño", precio: 8,  imagen: "/img/productos/coffee-small.jpg",  stock: true },
-      { idProducto: 102, nombre: "Café Mediano", precio: 10, imagen: "/img/productos/coffee-medium.jpg", stock: true },
-      { idProducto: 103, nombre: "Café Grande",  precio: 12, imagen: "/img/productos/coffee-large.jpg",  stock: true },
-    ],
-  },
-  {
-    idTienda: 2,
-    nombre: "STARBUCKS",
-    ubicacion: "ULima - Edificio E",
-    logo: "/img/tiendas/starbucks.jpg",
-    catalogo: [
-      { idProducto: 201, nombre: "Café Alto",   precio: 9,  imagen: "/img/productos/coffee-alto.jpg",   stock: true },
-      { idProducto: 202, nombre: "Café Grande", precio: 11, imagen: "/img/productos/coffee-grande.jpg", stock: true },
-      { idProducto: 203, nombre: "Café Venti",  precio: 13, imagen: "/img/productos/coffee-venti.jpg",  stock: true },
-    ],
-  },
-  {
-    idTienda: 3,
-    nombre: "FRUTIX",
-    ubicacion: "ULima - Boulevard",
-    logo: "/img/tiendas/frutix.jpg", // coloca una imagen en public/img/tiendas/frutix.jpg
-    catalogo: [
-      // Usa de momento imágenes de coffee como placeholder si no tienes frutas
-      { idProducto: 301, nombre: "Jugo de Fresa", precio: 10, imagen: "/img/productos/coffee-small.jpg",  stock: true },
-      { idProducto: 302, nombre: "Jugo de Mango", precio: 12, imagen: "/img/productos/coffee-medium.jpg", stock: true },
-      { idProducto: 303, nombre: "Jugo Mixto",    precio: 13, imagen: "/img/productos/coffee-large.jpg",  stock: true },
-    ],
-  },
-];
+// Mapeador: Convierte formato Backend (DB) a formato Frontend
+const mapTienda = (t: any): Tienda => ({
+  idTienda: t.id, // Backend: id -> Frontend: idTienda
+  nombre: t.nombre,
+  ubicacion: t.ubicacion,
+  logo: t.logo_url || "/img/brand/logo.png", // Fallback si es null
+  catalogo: (t.catalogo || []).map((p: any) => ({
+    idProducto: p.id,
+    nombre: p.nombre,
+    precio: Number(p.precio), // Postgres devuelve decimal como string a veces
+    imagen: p.imagen_url || "/img/productos/coffee-medium.jpg",
+    stock: p.stock
+  }))
+});
 
-const KEY = "tiendas";
-function loadTiendas(): Tienda[] {
+export const listarTiendas = async (query?: string): Promise<Tienda[]> => {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      localStorage.setItem(KEY, JSON.stringify(seed));
-      return seed;
-    }
-    return JSON.parse(raw) as Tienda[];
-  } catch {
-    localStorage.setItem(KEY, JSON.stringify(seed));
-    return seed;
+    const url = query ? `/tiendas?q=${query}` : "/tiendas";
+    const { data } = await api.get(url);
+    // El backend devuelve lista de tiendas. Mapeamos para ajustar nombres de propiedades.
+    return data.map((t: any) => ({
+      idTienda: t.idTienda || t.id, // Ajuste según lo que devuelve tu controlador
+      nombre: t.nombre,
+      ubicacion: t.ubicacion,
+      logo: t.logo || t.logo_url,
+      catalogo: [] // La lista general no trae productos por defecto
+    }));
+  } catch (error) {
+    console.error(error);
+    return [];
   }
-}
-function saveTiendas(tiendas: Tienda[]) {
-  localStorage.setItem(KEY, JSON.stringify(tiendas));
-}
-
-// ====== API mock persistente ======
-export const listarTiendas = async (): Promise<Tienda[]> => Promise.resolve(loadTiendas());
-
-export const obtenerTienda = async (id: number): Promise<Tienda | undefined> => {
-  const t = loadTiendas().find(t => t.idTienda === id);
-  return Promise.resolve(t);
 };
 
-export function setProductoStock(tiendaId: number, idProducto: number, stock: boolean) {
-  const tiendas = loadTiendas();
-  const t = tiendas.find(x => x.idTienda === tiendaId);
-  if (!t) return;
-  const p = t.catalogo.find(p => p.idProducto === idProducto);
-  if (p) p.stock = stock;
-  saveTiendas(tiendas);
+export const obtenerTienda = async (id: number): Promise<Tienda | undefined> => {
+  try {
+    const { data } = await api.get(`/tiendas/${id}`);
+    return mapTienda(data);
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+};
+
+// ADMIN TIENDA (Opcional: Conexión con endpoints de admin)
+export function setProductoStock(_tiendaId: number, idProducto: number, stock: boolean) {
+  api.patch(`/tiendas/productos/${idProducto}/stock`, { stock }).catch(console.error);
 }
 
-export function setProductoPrecio(tiendaId: number, idProducto: number, precio: number) {
-  const tiendas = loadTiendas();
-  const t = tiendas.find(x => x.idTienda === tiendaId);
-  if (!t) return;
-  const p = t.catalogo.find(p => p.idProducto === idProducto);
-  if (p) p.precio = precio;
-  saveTiendas(tiendas);
+export function setProductoPrecio(_tiendaId: number, idProducto: number, precio: number) {
+   api.patch(`/tiendas/productos/${idProducto}/precio`, { precio }).catch(console.error);
 }
 
-export function addProducto(tiendaId: number, data: { nombre: string; precio: number; imagen: string; stock?: boolean }) {
-  const tiendas = loadTiendas();
-  const t = tiendas.find(x => x.idTienda === tiendaId);
-  if (!t) return;
-  const maxId = Math.max(0, ...t.catalogo.map(p => p.idProducto));
-  const nuevo = { idProducto: maxId + 1, stock: true, ...data };
-  t.catalogo.push(nuevo);
-  saveTiendas(tiendas);
-  return nuevo;
+export async function addProducto(_tiendaId: number, data: { nombre: string; precio: number; imagen: string; stock?: boolean }) {
+  try {
+    const res = await api.post("/tiendas/productos", data);
+    return res.data;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 }

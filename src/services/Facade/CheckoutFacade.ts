@@ -1,59 +1,46 @@
 import { useCarrito } from "../../store/carrito.store";
-import { DeliveryCalculator } from "../Pricing/DeliveryCalculator";
-import { FlatDelivery } from "../Pricing/strategies/FlatDelivery";
+import { api } from "../../config/api"; 
 
 export type MetodoPago = "yape" | "efectivo";
 
 export type Pedido = {
   id: string;
-  fecha: string; // ISO
+  fecha: string;
   estado: "CREADO" | "ACEPTADO" | "ENTREGADO";
-  items: ReturnType<typeof useCarrito.getState>["items"];
-  subtotal: number;
-  delivery: number;
   total: number;
   metodo: MetodoPago;
 };
 
 export class CheckoutFacade {
-  private deliveryCalc: DeliveryCalculator;
-
-  constructor() {
-    this.deliveryCalc = new DeliveryCalculator(new FlatDelivery());
-  }
-
-  setDeliveryCalculator(calc: DeliveryCalculator) {
-    this.deliveryCalc = calc;
-  }
+  // Eliminamos el constructor y deliveryCalc porque ya no se usan aquí.
 
   async confirmar(metodo: MetodoPago): Promise<Pedido> {
-    const { items, subtotal, clear } = useCarrito.getState();
-
-    const sub = subtotal();
-    const delivery = this.deliveryCalc.calcular(sub);
-
-    const pedido: Pedido = {
-      id: crypto.randomUUID(),
-      fecha: new Date().toISOString(),
-      estado: "CREADO",
-      items,
-      subtotal: sub,
-      delivery,
-      total: sub + delivery,
-      metodo, // ← guardamos el método de pago
+    const { items, clear } = useCarrito.getState();
+    // Eliminamos 'sub' porque no se usaba
+    
+    // Construimos el payload que espera el Backend
+    const payload = {
+      metodoPago: metodo,
+      items: items.map(it => ({
+        cantidad: it.cantidad,
+        producto: { idProducto: it.producto.idProducto }
+      }))
     };
 
-    // persistimos en historial (mock)
     try {
-      const raw = localStorage.getItem("historial");
-      const hist = raw ? JSON.parse(raw) : [];
-      hist.push(pedido);
-      localStorage.setItem("historial", JSON.stringify(hist));
-    } catch {
-      // si algo falla con localStorage, seguimos sin romper el flujo
+      const { data } = await api.post("/pedidos", payload);
+      
+      clear(); // Limpia carrito local y visual
+      return {
+        id: data.id,
+        fecha: data.fecha,
+        estado: data.estado,
+        total: Number(data.total),
+        metodo: metodo
+      };
+    } catch (error) {
+      console.error("Error creando pedido", error);
+      throw error;
     }
-
-    clear(); // vacía el carrito
-    return pedido;
   }
 }

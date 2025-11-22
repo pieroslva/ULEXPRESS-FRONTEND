@@ -2,6 +2,7 @@ import { create } from "zustand"; // <--- ¡Esta línea es la que faltaba!
 import { loginUser, type User } from "../services/AuthService";
 
 type Sesion = { 
+  id:number;
   nombre: string; 
   codigo: string; 
   token: string; 
@@ -40,6 +41,7 @@ export const useAuth = create<{
 
       // 2. Creamos el objeto sesión para la UI del frontend
       const s: Sesion = {
+        id: user.id!,
         codigo: user.codigo, 
         nombre: user.nombre, 
         rol: user.rol, 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../config/api";
+import IncidenciaModal from "../../components/IncidenciaModal"; 
+
 
 type Pedido = {
   id: string;
@@ -19,6 +21,7 @@ const s = (n:number)=> new Intl.NumberFormat("es-PE",{style:"currency",currency:
 export default function Historial(){
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportandoId, setReportandoId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get("/pedidos")
@@ -68,15 +71,34 @@ export default function Historial(){
                   </div>
                 ))}
               </div>
-
-              <div className="mt-3 pt-3 border-t border-white/10 text-sm space-y-1">
-                <div className="flex justify-between font-bold text-lg mt-2">
-                  <span>Total</span><span>{s(p.total)}</span>
+                <div className="mt-3 pt-3 border-t border-white/10 text-sm space-y-1">
+                  <div className="flex justify-between font-bold text-lg mt-2 items-center">
+                    <div className="flex gap-2 items-center">
+                      <span>Total: {s(p.total)}</span>
+                    </div>
+                  
+                  {/* BOTÓN DE REPORTE (Solo si ya fue aceptado o entregado) */}
+                  {p.estado !== 'CREADO' && (
+                    <button 
+                      onClick={() => setReportandoId(p.id)}
+                      className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs transition-colors"
+                    >
+                      ⚠️ Reportar Problema
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Renderizado del Modal */}
+      {reportandoId && (
+        <IncidenciaModal 
+          pedidoId={reportandoId} 
+          onClose={() => setReportandoId(null)} 
+        />
       )}
     </section>
   );

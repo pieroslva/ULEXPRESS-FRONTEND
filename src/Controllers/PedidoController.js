@@ -1,6 +1,5 @@
 // src/controllers/pedidoController.js
-const { Pedido, ItemPedido, Producto, User, Incidencia } = require('../../db/models'); 
-
+const { Pedido, ItemPedido, Producto, User, Incidencia, Mensaje } = require('../../db/models');
 
 // POST /api/pedidos - Crea un nuevo pedido (VALIDANDO PRECIOS)
 exports.createOrder = async (req, res) => {
@@ -301,6 +300,68 @@ exports.rateOrder = async (req, res) => {
         return res.status(500).json({ message: 'Error al calificar.' });
     }
 
+};
+
+exports.reportIssue = async (req, res) => {
+    const { id } = req.params; // ID del pedido
+    const { tipo, descripcion } = req.body;
+    const usuarioId = req.user.id; // ID del alumno logueado
+
+    if (!tipo || !descripcion) {
+        return res.status(400).json({ message: 'Falta el tipo o la descripción del problema.' });
+    }
+
+    try {
+        // 1. Validar que el pedido exista
+        const pedido = await Pedido.findByPk(id);
+
+        if (!pedido) {
+            return res.status(404).json({ message: 'Pedido no encontrado.' });
+        }
+
+        // 2. Seguridad: Solo el dueño del pedido puede reportarlo
+        if (pedido.usuarioId !== usuarioId) {
+            return res.status(403).json({ message: 'No puedes reportar un pedido que no es tuyo.' });
+        }
+
+        // 3. Crear la incidencia
+        const nuevaIncidencia = await Incidencia.create({
+            pedidoId: id,
+            usuarioId,
+            tipo,
+            descripcion
+        });
+
+        return res.status(201).json({ 
+            message: 'Incidencia reportada correctamente.', 
+            incidencia: nuevaIncidencia 
+        });
+
+    } catch (error) {
+        console.error('Error al reportar incidencia:', error);
+        return res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};
+
+
+
+// GET /api/pedidos/:id/mensajes
+exports.getMessages = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const mensajes = await Mensaje.findAll({
+            where: { pedidoId: id },
+            include: [
+                // Incluimos datos del emisor para saber nombre y rol
+                { model: User, as: 'emisor', attributes: ['id', 'nombre', 'rol'] }
+            ],
+            order: [['fecha', 'ASC']] // Orden cronológico
+        });
+        return res.json(mensajes);
+    } catch (error) {
+        console.error('Error al obtener mensajes:', error);
+        return res.status(500).json({ message: 'Error al cargar el chat.' });
+    }
 };
 
 exports.reportIssue = async (req, res) => {

@@ -28,5 +28,7 @@ router.patch('/:id/calificar', verifyToken, pedidoController.rateOrder);
 // NUEVA RUTA: Reportar Incidencia
 router.post('/:id/reportar', verifyToken, pedidoController.reportIssue);
 
+// --- NUEVA RUTA: CHAT ---
+router.get('/:id/mensajes', verifyToken, pedidoController.getMessages);
 
 module.exports = router;

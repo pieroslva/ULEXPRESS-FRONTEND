@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../config/api";
 //import { socket } from "../config/api"; // ajústalo si está en otro folder
-import { socket } from "../config/api";
+import { socket } from "../config/socket";
 
 // Tipo del mensaje
 interface Mensaje {

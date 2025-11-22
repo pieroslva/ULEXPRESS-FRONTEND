@@ -73,7 +73,8 @@ exports.login = async (req, res) => {
       user: {
         id: user.id,
         nombre: user.nombre,
-        rol: user.rol
+        rol: user.rol,
+        tiendaId: user.tiendaId // <--- AGREGA ESTA LÍNEA
       }
     });
 

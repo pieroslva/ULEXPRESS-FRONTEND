@@ -1,40 +1,60 @@
-import { api } from "../config/api";
+import { API_URL } from "./api";
 
 export type User = {
-  id?: number; // El backend devuelve ID numérico
+  id?: number;
   codigo: string;
   nombre: string;
-  rol: "alumno" | "repartidor" | "tienda" | "admin";
+  rol?: "alumno" | "repartidor" | "admin" | "tienda";
   tiendaId?: number;
   email?: string;
-  token?: string; // El backend devuelve el token aquí o separado
+  token?: string; // Agregamos token al tipo
 };
 
-// Login Real
+// Login Real contra el Backend
 export async function loginUser(codigo: string, pass: string): Promise<User | null> {
   try {
-    const { data } = await api.post("/auth/login", { codigo, password: pass });
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        codigo: codigo, 
+        password: pass // El backend espera "password", no "pass"
+      }),
+    });
+
+    if (!response.ok) {
+      return null; // Credenciales incorrectas
+    }
+
+    const data = await response.json();
     
-    // El backend devuelve { token, user: { id, nombre, rol... } }
-    // Combinamos para guardar en sesión
+    // El backend devuelve: { token: "...", user: { id, nombre, rol } }
+    // Combinamos todo para devolver un objeto User completo al store
     return {
       ...data.user,
-      token: data.token
+      codigo: codigo, // El backend no devuelve codigo en el body user, lo recuperamos del input
+      token: data.token,
+      tiendaId: data.user.tiendaId // Asegúrate de que el back devuelva esto o sácalo del token decodificado
     };
   } catch (error) {
-    console.error("Error en login:", error);
+    console.error("Error de conexión:", error);
     return null;
   }
 }
 
-// Registro Real
-export async function registerUser(newUser: any): Promise<User> {
-  try {
-    // El backend espera { codigo, nombre, password, rol, email, tiendaId? }
-    const { data } = await api.post("/auth/register", newUser);
-    return data.user;
-  } catch (error: any) {
-    console.error("Error en registro:", error);
-    throw new Error(error.response?.data?.message || "Error al registrar");
+// Registro Real contra el Backend
+export async function registerUser(userData: any): Promise<User> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Error al registrar");
   }
+
+  const data = await response.json();
+  return data.user;
 }

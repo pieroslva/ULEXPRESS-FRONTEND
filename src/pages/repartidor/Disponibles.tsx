@@ -1,96 +1,68 @@
 import { useEffect, useState } from "react";
+import { api } from "../../config/api";
 
-type Pedido = {
+type PedidoDisponible = {
   id: string;
   fecha: string;
-  estado: "CREADO" | "ACEPTADO" | "ENTREGADO";
   total: number;
+  metodoPago: string;
+  tienda: string;
+  ubicacionTienda: string;
+  cliente: string;
 };
 
-const s = (n: number) =>
-  new Intl.NumberFormat("es-PE", {
-    style: "currency",
-    currency: "PEN",
-  }).format(n);
-
-function loadPedidos(): Pedido[] {
-  try {
-    return JSON.parse(localStorage.getItem("historial") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function savePedidos(pedidos: Pedido[]) {
-  try {
-    localStorage.setItem("historial", JSON.stringify(pedidos));
-  } catch {}
-}
-
-function appendAsignado(id: string) {
-  try {
-    const raw = localStorage.getItem("repartidor_asignados");
-    const arr = raw ? JSON.parse(raw) : [];
-    if (!arr.includes(id)) {
-      arr.push(id);
-      localStorage.setItem("repartidor_asignados", JSON.stringify(arr));
-    }
-  } catch {}
-}
+const s = (n: number) => new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(Number(n));
 
 export default function Disponibles() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [pedidos, setPedidos] = useState<PedidoDisponible[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setPedidos(loadPedidos());
-  }, []);
+  const cargar = () => {
+    setLoading(true);
+    api.get("/repartidor/pedidos/disponibles")
+      .then(({ data }) => setPedidos(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  };
 
-  const disponibles = pedidos.filter((p) => p.estado === "CREADO");
+  useEffect(() => { cargar(); }, []);
 
-  const aceptar = (id: string) => {
-    const next = pedidos.map((p) =>
-      p.id === id ? { ...p, estado: "ACEPTADO" } : p
-    );
-    savePedidos(next);
-    appendAsignado(id);
-    setPedidos(next);
+  const aceptar = async (id: string) => {
+    try {
+      await api.patch(`/repartidor/pedidos/${id}/aceptar`);
+      alert("¡Pedido aceptado!");
+      cargar(); // Recargar la lista para que desaparezca el aceptado
+    } catch (e) {
+      console.error(e);
+      alert("Error al aceptar (quizás ya lo tomó otro).");
+    }
   };
 
   return (
     <section className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-bold">Entregas disponibles</h1>
-        <p className="text-sm text-gray-300">
-          Pedidos que aún no han sido aceptados por ningún repartidor.
-        </p>
+      <header className="flex justify-between">
+        <h1 className="text-2xl font-bold">Disponibles</h1>
+        <button onClick={cargar} className="text-blue-400 underline">Refrescar</button>
       </header>
 
-      {disponibles.length === 0 ? (
-        <p className="text-sm text-gray-300">
-          Por ahora no hay pedidos disponibles para aceptar.
-        </p>
+      {loading ? <p>Cargando...</p> : pedidos.length === 0 ? (
+        <p className="text-gray-400">No hay pedidos pendientes.</p>
       ) : (
         <div className="space-y-3">
-          {disponibles.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3"
-            >
-              <div>
-                <div className="font-semibold">#{p.id.slice(0, 8)}</div>
-                <div className="text-xs text-gray-400">
-                  Fecha: {new Date(p.fecha).toLocaleString()}
-                </div>
+          {pedidos.map((p) => (
+            <div key={p.id} className="bg-white/5 p-4 rounded-lg border border-white/10">
+              <div className="flex justify-between font-bold mb-2">
+                <span className="text-blue-300">#{String(p.id).padStart(8,'0')}</span>
+                <span>{s(p.total)}</span>
               </div>
-              <div className="text-right">
-                <div className="font-semibold">{s(p.total)}</div>
-                <button
-                  onClick={() => aceptar(p.id)}
-                  className="mt-2 text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-700"
-                >
-                  Aceptar entrega
-                </button>
+              <div className="text-sm text-gray-300 mb-3 space-y-1">
+                <p>🏠 {p.tienda} ({p.ubicacionTienda})</p>
+                <p>👤 Cliente: {p.cliente}</p>
+                <p>💰 Pago: <span className="uppercase text-white">{p.metodoPago}</span></p>
               </div>
+              <button onClick={() => aceptar(p.id)} className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-bold transition">
+                Aceptar Entrega
+              </button>
             </div>
           ))}
         </div>

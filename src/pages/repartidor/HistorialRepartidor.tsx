@@ -1,75 +1,43 @@
 import { useEffect, useState } from "react";
+import { api } from "../../config/api";
 
-type Pedido = {
-  id: string;
-  fecha: string;
-  estado: "CREADO" | "ACEPTADO" | "ENTREGADO";
-  total: number;
-};
-
-const s = (n: number) =>
-  new Intl.NumberFormat("es-PE", {
-    style: "currency",
-    currency: "PEN",
-  }).format(n);
-
-function loadPedidos(): Pedido[] {
-  try {
-    return JSON.parse(localStorage.getItem("historial") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function loadAsignadosIds(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem("repartidor_asignados") || "[]");
-  } catch {
-    return [];
-  }
-}
+const s = (n: number) => new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(Number(n));
 
 export default function HistorialRepartidor() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [historial, setHistorial] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPedidos(loadPedidos());
+    // GET /api/pedidos devuelve todo lo asociado al repartidor
+    api.get("/pedidos")
+      .then(({ data }) => {
+        // Filtramos solo los terminados
+        const entregados = data.filter((p: any) => p.estado === 'ENTREGADO');
+        setHistorial(entregados);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
-
-  const ids = new Set(loadAsignadosIds());
-  const historial = pedidos.filter((p) => ids.has(p.id));
 
   return (
     <section className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-bold">Historial de entregas</h1>
-        <p className="text-sm text-gray-300">
-          Resumen de pedidos que has aceptado y entregado.
-        </p>
-      </header>
-
-      {historial.length === 0 ? (
-        <p className="text-sm text-gray-300">
-          Aún no tienes historial de entregas.
-        </p>
+      <h1 className="text-2xl font-bold">Historial de entregas</h1>
+      
+      {loading ? <p>Cargando...</p> : historial.length === 0 ? (
+        <p className="text-gray-400">Aún no has completado ninguna entrega.</p>
       ) : (
         <div className="space-y-3">
           {historial.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3"
-            >
+            <div key={p.id} className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3 border border-white/10 opacity-75 hover:opacity-100 transition">
               <div>
-                <div className="font-semibold">#{p.id.slice(0, 8)}</div>
+                <div className="font-bold">#{String(p.id).padStart(8,'0')}</div>
                 <div className="text-xs text-gray-400">
-                  Fecha: {new Date(p.fecha).toLocaleString()}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Estado: {p.estado}
+                  {new Date(p.fecha).toLocaleDateString()} - {new Date(p.fecha).toLocaleTimeString()}
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-semibold">{s(p.total)}</div>
+                <div className="font-bold text-green-400">{s(p.total)}</div>
+                <div className="text-xs text-gray-400">Ganancia aprox: {s(5.00)}</div>
               </div>
             </div>
           ))}

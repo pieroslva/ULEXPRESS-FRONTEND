@@ -1,64 +1,60 @@
+import { API_URL } from "./api";
+
 export type User = {
+  id?: number;
   codigo: string;
   nombre: string;
-  password: string;
   rol?: "alumno" | "repartidor" | "admin" | "tienda";
-  tiendaId?: number; // si es rol tienda, a qué tienda gestiona (mock)
-  email?: string;    // correo (solo se usará realmente en tiendas)
+  tiendaId?: number;
+  email?: string;
+  token?: string; // Agregamos token al tipo
 };
 
-// Usuarios base (mock, los que ya tenías)
-export const usersMock: User[] = [
-  { codigo: "20194613", nombre: "Piero S.",        password: "1234", rol: "alumno" },
-  { codigo: "R001",     nombre: "Piero Rodrigo",   password: "1234", rol: "repartidor" },
-  { codigo: "TDUNKIN",  nombre: "Dunkin Admin",    password: "1234", rol: "tienda", tiendaId: 1 },
-  { codigo: "TSTAR",    nombre: "Starbucks Admin", password: "1234", rol: "tienda", tiendaId: 2 },
-  { codigo: "TFRUTIX",  nombre: "Frutix Admin",    password: "1234", rol: "tienda", tiendaId: 3 },
-];
-
-const CUSTOM_KEY = "users_custom";
-
-function loadCustomUsers(): User[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as User[];
-  } catch {
-    return [];
-  }
-}
-
-function saveCustomUsers(users: User[]) {
-  try {
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(users));
-  } catch {
-    // si falla localStorage, lo ignoramos (es solo mock)
-  }
-}
-
-// Login: busca tanto en los mocks como en los registrados
+// Login Real contra el Backend
 export async function loginUser(codigo: string, pass: string): Promise<User | null> {
-  const all = [...usersMock, ...loadCustomUsers()];
-  const u = all.find((u) => u.codigo === codigo && u.password === pass);
-  return Promise.resolve(u ?? null);
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        codigo: codigo, 
+        password: pass // El backend espera "password", no "pass"
+      }),
+    });
+
+    if (!response.ok) {
+      return null; // Credenciales incorrectas
+    }
+
+    const data = await response.json();
+    
+    // El backend devuelve: { token: "...", user: { id, nombre, rol } }
+    // Combinamos todo para devolver un objeto User completo al store
+    return {
+      ...data.user,
+      codigo: codigo, // El backend no devuelve codigo en el body user, lo recuperamos del input
+      token: data.token,
+      tiendaId: data.user.tiendaId // Asegúrate de que el back devuelva esto o sácalo del token decodificado
+    };
+  } catch (error) {
+    console.error("Error de conexión:", error);
+    return null;
+  }
 }
 
-// Registro: guarda usuarios nuevos en localStorage
-export async function registerUser(newUser: User): Promise<User> {
-  const custom = loadCustomUsers();
-  const all = [...usersMock, ...custom];
+// Registro Real contra el Backend
+export async function registerUser(userData: any): Promise<User> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userData),
+  });
 
-  // No permitir códigos/usuarios repetidos
-  if (all.some((u) => u.codigo === newUser.codigo)) {
-    throw new Error("El usuario o contraseña no es valido");
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Error al registrar");
   }
 
-  const userToSave: User = { ...newUser };
-
-  custom.push(userToSave);
-  saveCustomUsers(custom);
-
-  return Promise.resolve(userToSave);
+  const data = await response.json();
+  return data.user;
 }
